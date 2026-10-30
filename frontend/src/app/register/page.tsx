@@ -2,13 +2,20 @@
 
 import React, { useState } from "react";
 
+interface RegisterFormData {
+    fullName: string;
+    email: string;
+    password: string
+}
+
 export default function RegisterPage() {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<RegisterFormData>({
         fullName: "",
         email: "",
         password: "",
     })
-    const [errors, setErrors] = useState({
+
+    const [errors, setErrors] = useState<RegisterFormData>({
         fullName: "",
         email: "",
         password: "",

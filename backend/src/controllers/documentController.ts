@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { PDFParse } from "pdf-parse";
 import DocumentModel from "../models/Document.js";
+import chunkText from "../utils/chunkText.js";
+import Chunk from "../models/Chunk.js";
 
 
 export const uploadDocument = async (req: Request, res: Response) => {
@@ -34,6 +36,18 @@ export const uploadDocument = async (req: Request, res: Response) => {
             extractedText,
         });
 
+        const chunks = chunkText(extractedText);
+
+
+        const chunkDocuments = chunks.map((content, index) => ({
+            userId: res.locals.userId,
+            documentId: document._id,
+            content,
+            chunkIndex: index,
+        }));
+
+        await Chunk.insertMany(chunkDocuments);
+
         return res.status(201).json({
             success: true,
             message: "PDF uploaded and saved successfully",
@@ -42,6 +56,7 @@ export const uploadDocument = async (req: Request, res: Response) => {
                 fileName: document.fileName,
                 fileSize: document.fileSize,
             },
+            totalChunks: chunks.length,
         });
 
     } catch (error) {

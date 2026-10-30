@@ -2,11 +2,16 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from 'next/navigation'
+import api from "@/lib/axios";
 
 const LoginPage = () => {
+    const router = useRouter()
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+
     const [errors, setErrors] = useState(
         {
             email: "",
@@ -14,13 +19,13 @@ const LoginPage = () => {
         }
     );
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
+    const validation = () => {
         const newErrors = {
             email: "",
-            password: "",
-        };
+            password: ""
+        }
 
 
         if (!email.trim()) {
@@ -36,16 +41,52 @@ const LoginPage = () => {
 
         setErrors(newErrors);
 
+        return Object.values(newErrors).every(el => el === '')
+    }
 
-        if (newErrors.email || newErrors.password) {
-            return;
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        const result = validation()
+        console.log('result :>> ', result);
+
+
+        if (!result) {
+            return
         }
-        console.log("Login successful");
 
-        console.log("Email:", email);
-        console.log("Password:", password);
+
+        try {
+            setLoading(true)
+            const response = await api.post('/api/auth/login', {
+                email,
+                password
+            })
+            setLoading(false)
+            setError("")
+            if (response?.data?.success) {
+
+                const { token, user } = response.data;
+
+                localStorage.setItem("token", token);
+                localStorage.setItem("user", JSON.stringify(user));
+
+                router.push("/chat");
+            }
+        } catch (error: any) {
+            setLoading(false)
+            setError(error?.response?.data?.message)
+        }
+
     };
+    useEffect(() => {
+        const token = localStorage.getItem("token");
 
+        if (token) {
+            router.replace("/chat");
+        }
+    }, [router]);
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
@@ -125,13 +166,18 @@ const LoginPage = () => {
 
                     </div>
 
-
-                    <button
+                    <p className="text-center   text-sm text-red-500">{error}</p>
+                    {loading ? <button
+                        className="w-full cursor-pointer rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
+                    >
+                        loading...
+                    </button> : <button
                         type="submit"
                         className="w-full cursor-pointer rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
                     >
                         Login
-                    </button>
+                    </button>}
+
 
                 </form>
 

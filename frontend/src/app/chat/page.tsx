@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useRef, useState } from "react";
 
 
 interface Message {
@@ -10,7 +11,7 @@ interface Message {
     createdAt: Date,
 }
 export default function ChatPage() {
-
+    const router = useRouter()
     const [messages, setMessage] = useState<Message[]>([])
     const [input, setInput] = useState<string>("");
 
@@ -57,7 +58,13 @@ export default function ChatPage() {
         setMessage((prev) => [...prev, newMessage])
     }
 
+    useEffect(() => {
+        const token = localStorage.getItem("token");
 
+        if (!token) {
+            router.replace("/login");
+        }
+    }, [router]);
     return (
         <main className="min-h-screen bg-gray-950 text-white flex flex-col">
 

@@ -83,7 +83,7 @@ export const login = async (req: Request, res: Response) => {
             });
         }
 
-        // Generate JWT token
+
         const token = jwt.sign(
             { userId: user._id.toString() },
             JWT_SECRET,

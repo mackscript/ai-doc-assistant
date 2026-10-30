@@ -1,6 +1,8 @@
 "use client"
 
+import api from "@/lib/axios";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
 interface RegisterFormData {
@@ -10,6 +12,7 @@ interface RegisterFormData {
 }
 
 export default function RegisterPage() {
+    const router = useRouter()
     const [formData, setFormData] = useState<RegisterFormData>({
         fullName: "",
         email: "",
@@ -21,6 +24,9 @@ export default function RegisterPage() {
         email: "",
         password: "",
     })
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -63,12 +69,38 @@ export default function RegisterPage() {
         return Object.values(newErrors).every((error) => error === "")
     }
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
 
         const isValid = validation();
+
         console.log('isValid :>> ', isValid);
         console.log("Register Data:", formData);
+
+
+        if (!isValid) {
+            return;
+        }
+
+
+        try {
+            setLoading(true)
+            const response = await api.post('/api/auth/register', {
+                email: formData.email,
+                fullName: formData.fullName,
+                password: formData.password
+            })
+            console.log('response :>> ', response);
+            setLoading(false)
+            setError("")
+            if (response?.data?.success) {
+                router.push("/login");
+            }
+
+        } catch (error: any) {
+            setLoading(false)
+            setError(error?.response?.data?.message)
+        }
     }
 
 
@@ -143,12 +175,17 @@ export default function RegisterPage() {
                         )}
                     </div>
 
-                    <button
+                    {loading ? <button
+
+                        className="w-full cursor-pointer rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
+                    >
+                        Loading..
+                    </button> : <button
                         type="submit"
                         className="w-full cursor-pointer rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
                     >
                         Create Account
-                    </button>
+                    </button>}
 
                 </form>
 

@@ -3,6 +3,7 @@ import { PDFParse } from "pdf-parse";
 import DocumentModel from "../models/Document.js";
 import chunkText from "../utils/chunkText.js";
 import Chunk from "../models/Chunk.js";
+import generateEmbedding from "../utils/generateEmbedding.js";
 
 
 export const uploadDocument = async (req: Request, res: Response) => {
@@ -39,12 +40,18 @@ export const uploadDocument = async (req: Request, res: Response) => {
         const chunks = chunkText(extractedText);
 
 
-        const chunkDocuments = chunks.map((content, index) => ({
-            userId: res.locals.userId,
-            documentId: document._id,
-            content,
-            chunkIndex: index,
-        }));
+        const chunkDocuments = await Promise.all(
+            chunks.map(async (content, index) => {
+                const embedding = await generateEmbedding(content);
+                return {
+                    userId: res.locals.userId,
+                    documentId: document._id,
+                    content,
+                    chunkIndex: index,
+                    embedding,
+                };
+            })
+        );
 
         await Chunk.insertMany(chunkDocuments);
 

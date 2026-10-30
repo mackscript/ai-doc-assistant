@@ -5,6 +5,7 @@ interface IChunk extends Document {
     documentId: mongoose.Types.ObjectId;
     content: string;
     chunkIndex: number;
+    embedding: number[];
 }
 
 const chunkSchema = new Schema<IChunk>(
@@ -25,6 +26,10 @@ const chunkSchema = new Schema<IChunk>(
         },
         chunkIndex: {
             type: Number,
+            required: true,
+        },
+        embedding: {
+            type: [Number],
             required: true,
         },
     },

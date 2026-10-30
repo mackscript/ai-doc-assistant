@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 
 interface Message {
@@ -14,7 +14,34 @@ export default function ChatPage() {
     const [messages, setMessage] = useState<Message[]>([])
     const [input, setInput] = useState<string>("");
 
+    const [file, setFile] = useState<File | null>(null)
 
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+
+        console.log('selectedFile :>> ', selectedFile);
+        if (!selectedFile) return;
+
+        if (selectedFile.type !== "application/pdf") {
+            alert("Only PDF files are allowed");
+            return;
+        }
+
+
+        if (selectedFile.size > 10 * 1024 * 1024) {
+            alert("File size must be less than 10MB");
+            return;
+        }
+
+        setFile(selectedFile);
+
+    }
+    const formatFileSize = (bytes: number): string => {
+        return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+    };
     const handleSend = (e: any) => {
         e.preventDefault()
         if (!input.trim()) return;
@@ -43,7 +70,48 @@ export default function ChatPage() {
                 </p>
             </header>
 
+            <div className="border-b border-gray-800 p-4">
 
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    onChange={handleFileChange}
+                />
+
+                <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-700"
+                >
+                    Upload PDF
+                </button>
+                {file && (
+                    <div className="mt-3 flex items-center justify-between rounded-lg bg-gray-800 p-3">
+
+                        <div>
+                            <p className="text-sm font-medium text-white">
+                                {file.name}
+                            </p>
+
+                            <p className="text-xs text-gray-400">
+                                {formatFileSize(file.size)}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setFile(null)}
+                            className="text-sm text-red-400 hover:text-red-300"
+                        >
+                            Remove
+                        </button>
+
+                    </div>
+                )}
+
+            </div>
             <section className="flex-1 p-6 space-y-6">
 
                 {messages.map((message) => (

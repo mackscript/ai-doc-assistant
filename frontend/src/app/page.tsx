@@ -1,5 +1,5 @@
 import Image from "next/image";
-
+import Link from "next/link";
 export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gray-950 text-white p-6">
@@ -11,9 +11,12 @@ export default function Home() {
         Upload your documents and ask questions using AI.
       </p>
 
-      <button className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium">
+      <Link
+        href="/login"
+        className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium text-white"
+      >
         Get Started
-      </button>
+      </Link>
     </main>
   );
 }

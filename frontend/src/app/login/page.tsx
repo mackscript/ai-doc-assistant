@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import React, { useState } from "react";
 
 const LoginPage = () => {
@@ -136,9 +137,9 @@ const LoginPage = () => {
 
                 <p className="mt-6 text-center text-sm text-gray-400">
                     Don't have an account?{" "}
-                    <a href="/register" className="text-blue-500 hover:underline">
+                    <Link href="/register" className="text-blue-500 hover:underline">
                         Register
-                    </a>
+                    </Link>
                 </p>
 
             </div>

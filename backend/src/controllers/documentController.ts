@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PDFParse } from "pdf-parse";
+import DocumentModel from "../models/Document.js";
 
 
 export const uploadDocument = async (req: Request, res: Response) => {
@@ -11,8 +12,6 @@ export const uploadDocument = async (req: Request, res: Response) => {
     }
 
     let parser: PDFParse | undefined;
-
-
     try {
         parser = new PDFParse({
             data: req.file.buffer
@@ -27,15 +26,24 @@ export const uploadDocument = async (req: Request, res: Response) => {
                 message: "No readable text found in PDF",
             });
         }
+        const document = await DocumentModel.create({
+            userId: res.locals.userId,
+            fileName: req.file.originalname,
+            mimeType: req.file.mimetype,
+            fileSize: req.file.size,
+            extractedText,
+        });
 
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
-            message: "PDF text extracted successfully",
-            data: {
-                fileName: req.file.originalname,
-                text: extractedText,
+            message: "PDF uploaded and saved successfully",
+            document: {
+                id: document._id,
+                fileName: document.fileName,
+                fileSize: document.fileSize,
             },
         });
+
     } catch (error) {
         console.error("PDF Extraction Error:", error);
 

@@ -25,7 +25,7 @@ export default function RegisterPage() {
         password: "",
     })
     const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,24 +82,25 @@ export default function RegisterPage() {
             return;
         }
 
-
+        setIsLoading(true)
         try {
-            setLoading(true)
+
             const response = await api.post('/api/auth/register', {
                 email: formData.email,
                 fullName: formData.fullName,
                 password: formData.password
             })
             console.log('response :>> ', response);
-            setLoading(false)
+            setIsLoading(false)
             setError("")
             if (response?.data?.success) {
                 router.push("/login");
             }
 
         } catch (error: any) {
-            setLoading(false)
             setError(error?.response?.data?.message)
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -175,7 +176,7 @@ export default function RegisterPage() {
                         )}
                     </div>
 
-                    {loading ? <button
+                    {isLoading ? <button
 
                         className="w-full cursor-pointer rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
                     >

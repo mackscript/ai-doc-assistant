@@ -20,7 +20,7 @@ const LoginPage = () => {
     );
 
     const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
     const validation = () => {
         const newErrors = {
             email: "",
@@ -56,14 +56,14 @@ const LoginPage = () => {
             return
         }
 
-
+        setIsLoading(true)
         try {
-            setLoading(true)
+
             const response = await api.post('/api/auth/login', {
                 email,
                 password
             })
-            setLoading(false)
+
             setError("")
             if (response?.data?.success) {
 
@@ -75,8 +75,10 @@ const LoginPage = () => {
                 router.push("/chat");
             }
         } catch (error: any) {
-            setLoading(false)
+
             setError(error?.response?.data?.message)
+        } finally {
+            setIsLoading(false);
         }
 
     };
@@ -167,7 +169,7 @@ const LoginPage = () => {
                     </div>
 
                     <p className="text-center   text-sm text-red-500">{error}</p>
-                    {loading ? <button
+                    {isLoading ? <button
                         className="w-full cursor-pointer rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
                     >
                         loading...

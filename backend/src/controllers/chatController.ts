@@ -40,7 +40,7 @@ export const sendMessage = async (
 
         const chatObjectId = new mongoose.Types.ObjectId(chatId);
 
-        // find chat 
+
         const chat = await Chat.findOne({
             _id: chatObjectId,
             userId,
@@ -53,7 +53,7 @@ export const sendMessage = async (
             });
         }
 
-        // save user message 
+
         const userMessage = await Message.create({
             chatId: chatObjectId,
             userId,
@@ -61,7 +61,9 @@ export const sendMessage = async (
             content: message.trim(),
         });
 
-        // Search Relevant chunks form Documents  
+        console.log('message :>> ', message);
+        console.log('userId :>> ', userId);
+
         const relevantChunks = await searchSimilarChunks(
             message.trim(),
             userId
@@ -161,3 +163,148 @@ export const createChat = async (req: Request, res: Response) => {
 
 
 }
+
+
+export const getAllChats = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const userId = res.locals.userId;
+
+        const chats = await Chat.find({ userId })
+            .sort({ updatedAt: -1 })
+            .select("_id title createdAt updatedAt");
+
+        return res.status(200).json({
+            success: true,
+            message: "Chats retrieved successfully",
+            data: chats,
+        });
+
+    } catch (error) {
+        console.log('error :>> ', error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve chats",
+        });
+    }
+};
+
+
+export const getChatMessages = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const { chatId } = req.params;
+        const userId = res.locals.userId;
+
+
+        if (
+            typeof chatId !== "string" ||
+            !mongoose.Types.ObjectId.isValid(chatId)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid chat ID",
+            });
+        }
+
+
+        const chat = await Chat.findOne({
+            _id: new mongoose.Types.ObjectId(chatId),
+            userId,
+        });
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                message: "Chat not found",
+            });
+        }
+
+
+        const messages = await Message.find({
+            chatId: chat._id,
+            userId,
+        }).sort({ createdAt: 1 });
+
+
+        return res.status(200).json({
+            success: true,
+            message: "Chat history retrieved successfully",
+            data: {
+                chat,
+                messages,
+            },
+        });
+
+    } catch (error) {
+        console.log('error :>> ', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve chat history",
+        });
+    }
+};
+
+
+
+export const deleteChat = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const { chatId } = req.params;
+        const userId = res.locals.userId;
+
+        if (
+            typeof chatId !== "string" ||
+            !mongoose.Types.ObjectId.isValid(chatId)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid chat ID",
+            });
+        }
+
+
+        const chat = await Chat.findOne({
+            _id: new mongoose.Types.ObjectId(chatId),
+            userId,
+        });
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                message: "Chat not found",
+            });
+        }
+
+
+        await Message.deleteMany({
+            chatId: chat._id,
+            userId,
+        });
+
+
+        await Chat.deleteOne({
+            _id: chat._id,
+            userId,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Chat deleted successfully",
+        });
+
+    } catch (error) {
+        console.log('error :>> ', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to delete chat",
+        });
+    }
+};

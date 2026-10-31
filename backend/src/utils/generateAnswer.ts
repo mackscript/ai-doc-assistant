@@ -36,6 +36,7 @@ const generateAnswer = async ({
 
     const answer = response.text;
 
+    console.log('answer :>> ', answer);
     if (!answer) {
         throw new Error("Failed to generate AI answer");
     }

@@ -31,7 +31,10 @@ const messageSchema = new Schema<IMessage>({
         trim: true,
         required: true
     }
-})
+},
+    {
+        timestamps: true,
+    })
 
 const Message = mongoose.model<IMessage>("Message", messageSchema);
 export default Message;

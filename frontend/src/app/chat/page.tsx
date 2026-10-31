@@ -2,61 +2,194 @@
 
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
-
-
+import PdfUpload from "@/components/chat/PdfUpload";
+import MessageList from "@/components/chat/MessageList";
+import MessageInput from "@/components/chat/MessageInput";
+import ChatHeader from "@/components/chat/ChatHeader";
+import ChatSidebar, { Chat } from "@/components/chat/ChatSidebar";
+import { createChat, deleteChat, getAllChats, getChatMessages, sendChatMessage } from "@/service/chatService";
 interface Message {
     id: string,
     role: "user" | "assistant"
     content: string,
     createdAt: Date,
 }
+
 export default function ChatPage() {
+    const activeChatIdRef = useRef<string | null>(null);
     const router = useRouter()
-    const [messages, setMessage] = useState<Message[]>([])
-    const [input, setInput] = useState<string>("");
-
+    const [messages, setMessages] = useState<Message[]>([])
+    const [isSending, setIsSending] = useState(false);
     const [file, setFile] = useState<File | null>(null)
+    const [chats, setChats] = useState<Chat[]>([]);
+    const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
+    const handleSend = async (message: string) => {
+        if (!message.trim() || isSending) return;
 
-        console.log('selectedFile :>> ', selectedFile);
-        if (!selectedFile) return;
+        setIsSending(true);
 
-        if (selectedFile.type !== "application/pdf") {
-            alert("Only PDF files are allowed");
-            return;
+        let chatId = activeChatId;
+
+
+        try {
+
+            if (!chatId) {
+                const chatResponse = await createChat("New Chat");
+
+                if (!chatResponse.success) {
+                    throw new Error("Failed to create chat");
+                }
+
+                const newChat = chatResponse.data;
+
+                chatId = newChat._id;
+
+                setActiveChatId(chatId);
+                setChats((prev) => [newChat, ...prev]);
+            }
+
+            if (!chatId) {
+                throw new Error("Chat ID is missing");
+            }
+
+            let tempMessage: Message | null = null;
+            tempMessage = {
+                id: crypto.randomUUID(),
+                role: "user",
+                content: message.trim(),
+                createdAt: new Date(),
+            };
+
+            setMessages((prev) => [...prev, tempMessage!]);
+
+
+            const data = await sendChatMessage(chatId, message.trim());
+
+            const userMessage: Message = {
+                id: data.userMessage._id,
+                role: "user",
+                content: data.userMessage.content,
+                createdAt: new Date(data.userMessage.createdAt),
+            };
+
+            const assistantMessage: Message = {
+                id: data.assistantMessage._id,
+                role: "assistant",
+                content: data.assistantMessage.content,
+                createdAt: new Date(data.assistantMessage.createdAt),
+            };
+
+            setMessages((prev) => [
+                ...prev.filter((msg) => msg.id !== tempMessage.id),
+                userMessage,
+                assistantMessage,
+            ]);
+
+            const updatedChats = await getAllChats();
+            setChats(updatedChats);
+
+        } catch (error: any) {
+
+            console.error(
+                "Send message error:",
+                error.response?.data || error.message
+            );
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to send message"
+            );
+
+        } finally {
+            setIsSending(false);
         }
-
-
-        if (selectedFile.size > 10 * 1024 * 1024) {
-            alert("File size must be less than 10MB");
-            return;
-        }
-
-        setFile(selectedFile);
-
-    }
-    const formatFileSize = (bytes: number): string => {
-        return (bytes / (1024 * 1024)).toFixed(2) + " MB";
     };
-    const handleSend = (e: any) => {
-        e.preventDefault()
-        if (!input.trim()) return;
 
-        const newMessage: Message = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: input,
-            createdAt: new Date()
+
+
+
+    const handleNewChat = async () => {
+
+        try {
+            const response = await createChat("New Chat");
+
+            if (response.success) {
+                const newChat = response.data;
+                setChats((prev) => [newChat, ...prev]);
+                setActiveChatId(newChat._id);
+                setMessages([]);
+            }
+        } catch (error: any) {
+            console.error(
+                "Create chat error:",
+                error.response?.data || error.message
+            );
         }
+    };
 
-        setInput("")
-        setMessage((prev) => [...prev, newMessage])
-    }
+    const handleSelectChat = async (chatId: string) => {
+        setActiveChatId(chatId);
+        setMessages([]);
+        activeChatIdRef.current = chatId;
+        try {
+            const data = await getChatMessages(chatId);
+
+
+            console.log('data :>> ', data, activeChatId, chatId);
+            if (activeChatIdRef.current !== chatId) return;
+
+            const formattedMessages: Message[] = data.messages.map(
+                (message: any) => ({
+                    id: message._id,
+                    role: message.role,
+                    content: message.content,
+                    createdAt: new Date(message.createdAt),
+                })
+            );
+
+            console.log('formattedMessages :>> ', formattedMessages);
+            setMessages(formattedMessages);
+        } catch (error: any) {
+            console.error("Get chat messages error:", error);
+        }
+    };
+
+
+    const handleDeleteChat = async (chatId: string) => {
+        const confirmed = window.confirm(
+            "Are you sure you want to delete this chat?"
+        );
+
+        if (!confirmed) return;
+
+        try {
+            await deleteChat(chatId);
+
+            setChats((prev) =>
+                prev.filter((chat) => chat._id !== chatId)
+            );
+
+            if (activeChatId === chatId) {
+                setActiveChatId(null);
+                setMessages([]);
+            }
+
+        } catch (error: any) {
+            console.error(
+                "Delete chat error:",
+                error.response?.data || error.message
+            );
+
+            alert(
+                error.response?.data?.message || "Failed to delete chat"
+            );
+        }
+    };
+
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -64,110 +197,57 @@ export default function ChatPage() {
         if (!token) {
             router.replace("/login");
         }
+        const fetchChats = async () => {
+            try {
+                const chats = await getAllChats();
+                setChats(chats);
+            } catch (error: any) {
+                console.error(
+                    "Fetch chats error:",
+                    error.response?.data || error.message
+                );
+            }
+        };
+
+        fetchChats();
+
     }, [router]);
+
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        router.replace("/login");
+    };
     return (
-        <main className="min-h-screen bg-gray-950 text-white flex flex-col">
+        <main className="flex h-screen flex-col bg-gray-950 text-white">
 
-            <header className="border-b border-gray-800 p-4">
-                <h1 className="text-xl font-bold">
-                    AI Document Assistant
-                </h1>
-                <p className="text-sm text-gray-400">
-                    Chat with your documents
-                </p>
-            </header>
+            <ChatHeader onLogout={handleLogout} />
 
-            <div className="border-b border-gray-800 p-4">
+            <div className="flex min-h-0 flex-1">
 
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    className="hidden"
-                    onChange={handleFileChange}
+                <ChatSidebar chats={chats}
+                    activeChatId={activeChatId}
+                    onNewChat={handleNewChat}
+                    onSelectChat={handleSelectChat}
+                    onDeleteChat={handleDeleteChat}
                 />
 
-                <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-700"
-                >
-                    Upload PDF
-                </button>
-                {file && (
-                    <div className="mt-3 flex items-center justify-between rounded-lg bg-gray-800 p-3">
+                <div className="flex min-w-0 flex-1 flex-col">
 
-                        <div>
-                            <p className="text-sm font-medium text-white">
-                                {file.name}
-                            </p>
-
-                            <p className="text-xs text-gray-400">
-                                {formatFileSize(file.size)}
-                            </p>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setFile(null)}
-                            className="text-sm text-red-400 hover:text-red-300"
-                        >
-                            Remove
-                        </button>
-
-                    </div>
-                )}
-
-            </div>
-            <section className="flex-1 p-6 space-y-6">
-
-                {messages.map((message) => (
-                    <div
-                        key={message.id}
-                        className={`flex ${message.role === "user"
-                            ? "justify-end"
-                            : "justify-start"
-                            }`}
-                    >
-                        <div
-                            className={`max-w-md rounded-2xl px-4 py-3 ${message.role === "user"
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-800 text-gray-200"
-                                }`}
-                        >
-                            {message.content}
-                        </div>
-                    </div>
-                ))}
-
-            </section>
-
-
-            <footer className="border-t border-gray-800 p-4">
-
-                <form className="max-w-4xl mx-auto flex gap-3">
-
-                    <input
-
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        type="text"
-                        placeholder="Ask something about your document..."
-                        className="flex-1 rounded-xl bg-gray-800 border border-gray-700 px-4 py-3 outline-none focus:border-blue-500"
+                    <PdfUpload
+                        file={file}
+                        onFileChange={setFile}
                     />
 
-                    <button
-                        onClick={handleSend}
-                        type="submit"
-                        className="bg-blue-600 hover:bg-blue-700 px-6 rounded-xl font-medium"
-                    >
-                        Send
-                    </button>
+                    <MessageList messages={messages} />
 
-                </form>
+                    <MessageInput onSend={handleSend} isLoading={isSending}
+                    />
 
-            </footer>
-
+                </div>
+            </div>
         </main>
     );
 }

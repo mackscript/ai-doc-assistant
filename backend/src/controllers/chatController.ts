@@ -90,7 +90,7 @@ export const sendMessage = async (
         }
 
 
-        // save assistantMessage 
+
         const assistantMessage = await Message.create({
             chatId: chatObjectId,
             userId,

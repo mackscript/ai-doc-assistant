@@ -1,253 +1,108 @@
-"use client"
+
+"use client";
 
 import { useRouter } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+
 import PdfUpload from "@/components/chat/PdfUpload";
-import MessageList from "@/components/chat/MessageList";
-import MessageInput from "@/components/chat/MessageInput";
-import ChatHeader from "@/components/chat/ChatHeader";
-import ChatSidebar, { Chat } from "@/components/chat/ChatSidebar";
-import { createChat, deleteChat, getAllChats, getChatMessages, sendChatMessage } from "@/service/chatService";
-interface Message {
-    id: string,
-    role: "user" | "assistant"
-    content: string,
-    createdAt: Date,
-}
+import { createChat } from "@/service/chatService";
 
 export default function ChatPage() {
-    const activeChatIdRef = useRef<string | null>(null);
-    const router = useRouter()
-    const [messages, setMessages] = useState<Message[]>([])
-    const [isSending, setIsSending] = useState(false);
-    const [file, setFile] = useState<File | null>(null)
-    const [chats, setChats] = useState<Chat[]>([]);
-    const [activeChatId, setActiveChatId] = useState<string | null>(null);
+    const router = useRouter();
 
-
-
-    const handleSend = async (message: string) => {
-        if (!message.trim() || isSending) return;
-
-        setIsSending(true);
-
-        let chatId = activeChatId;
-
-
-        try {
-
-            if (!chatId) {
-                const chatResponse = await createChat("New Chat");
-
-                if (!chatResponse.success) {
-                    throw new Error("Failed to create chat");
-                }
-
-                const newChat = chatResponse.data;
-
-                chatId = newChat._id;
-
-                setActiveChatId(chatId);
-                setChats((prev) => [newChat, ...prev]);
-            }
-
-            if (!chatId) {
-                throw new Error("Chat ID is missing");
-            }
-
-            let tempMessage: Message | null = null;
-            tempMessage = {
-                id: crypto.randomUUID(),
-                role: "user",
-                content: message.trim(),
-                createdAt: new Date(),
-            };
-
-            setMessages((prev) => [...prev, tempMessage!]);
-
-
-            const data = await sendChatMessage(chatId, message.trim());
-
-            const userMessage: Message = {
-                id: data.userMessage._id,
-                role: "user",
-                content: data.userMessage.content,
-                createdAt: new Date(data.userMessage.createdAt),
-            };
-
-            const assistantMessage: Message = {
-                id: data.assistantMessage._id,
-                role: "assistant",
-                content: data.assistantMessage.content,
-                createdAt: new Date(data.assistantMessage.createdAt),
-            };
-
-            setMessages((prev) => [
-                ...prev.filter((msg) => msg.id !== tempMessage.id),
-                userMessage,
-                assistantMessage,
-            ]);
-
-            const updatedChats = await getAllChats();
-            setChats(updatedChats);
-
-        } catch (error: any) {
-
-            console.error(
-                "Send message error:",
-                error.response?.data || error.message
-            );
-
-            alert(
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to send message"
-            );
-
-        } finally {
-            setIsSending(false);
-        }
-    };
-
-
-
+    const [file, setFile] = useState<File | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
 
     const handleNewChat = async () => {
+        if (isCreating) return;
 
         try {
+            setIsCreating(true);
+
             const response = await createChat("New Chat");
 
             if (response.success) {
-                const newChat = response.data;
-                setChats((prev) => [newChat, ...prev]);
-                setActiveChatId(newChat._id);
-                setMessages([]);
+                router.push(`/chat/${response.data._id}`);
             }
-        } catch (error: any) {
-            console.error(
-                "Create chat error:",
-                error.response?.data || error.message
-            );
+        } catch (error) {
+            console.error("Create chat error:", error);
+            alert("Unable to create chat. Please try again.");
+        } finally {
+            setIsCreating(false);
         }
     };
 
-    const handleSelectChat = async (chatId: string) => {
-        setActiveChatId(chatId);
-        setMessages([]);
-        activeChatIdRef.current = chatId;
-        try {
-            const data = await getChatMessages(chatId);
-
-
-            console.log('data :>> ', data, activeChatId, chatId);
-            if (activeChatIdRef.current !== chatId) return;
-
-            const formattedMessages: Message[] = data.messages.map(
-                (message: any) => ({
-                    id: message._id,
-                    role: message.role,
-                    content: message.content,
-                    createdAt: new Date(message.createdAt),
-                })
-            );
-
-            console.log('formattedMessages :>> ', formattedMessages);
-            setMessages(formattedMessages);
-        } catch (error: any) {
-            console.error("Get chat messages error:", error);
-        }
-    };
-
-
-    const handleDeleteChat = async (chatId: string) => {
-        const confirmed = window.confirm(
-            "Are you sure you want to delete this chat?"
-        );
-
-        if (!confirmed) return;
-
-        try {
-            await deleteChat(chatId);
-
-            setChats((prev) =>
-                prev.filter((chat) => chat._id !== chatId)
-            );
-
-            if (activeChatId === chatId) {
-                setActiveChatId(null);
-                setMessages([]);
-            }
-
-        } catch (error: any) {
-            console.error(
-                "Delete chat error:",
-                error.response?.data || error.message
-            );
-
-            alert(
-                error.response?.data?.message || "Failed to delete chat"
-            );
-        }
-    };
-
-
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-            router.replace("/login");
-        }
-        const fetchChats = async () => {
-            try {
-                const chats = await getAllChats();
-                setChats(chats);
-            } catch (error: any) {
-                console.error(
-                    "Fetch chats error:",
-                    error.response?.data || error.message
-                );
-            }
-        };
-
-        fetchChats();
-
-    }, [router]);
-
-
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-
-        router.replace("/login");
-    };
     return (
-        <main className="flex h-screen flex-col bg-gray-950 text-white">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-gray-950 px-5 py-10">
 
-            <ChatHeader onLogout={handleLogout} />
+            <div className="w-full max-w-2xl space-y-8">
 
-            <div className="flex min-h-0 flex-1">
 
-                <ChatSidebar chats={chats}
-                    activeChatId={activeChatId}
-                    onNewChat={handleNewChat}
-                    onSelectChat={handleSelectChat}
-                    onDeleteChat={handleDeleteChat}
-                />
+                <div className="space-y-3 text-center">
 
-                <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-500/10 text-3xl">
+                        ✨
+                    </div>
 
-                    <PdfUpload
-                        file={file}
-                        onFileChange={setFile}
-                    />
+                    <h1 className="text-3xl font-semibold tracking-tight text-white">
+                        AI Document Assistant
+                    </h1>
 
-                    <MessageList messages={messages} />
-
-                    <MessageInput onSend={handleSend} isLoading={isSending}
-                    />
+                    <p className="text-sm leading-6 text-gray-400">
+                        Upload your documents and start asking questions.
+                        Get accurate answers directly from your PDFs.
+                    </p>
 
                 </div>
+
+
+                <div className="flex justify-center">
+
+                    <button
+                        onClick={handleNewChat}
+                        disabled={isCreating}
+                        className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <span className="text-lg">+</span>
+                        {isCreating ? "Creating Chat..." : "Start New Chat"}
+                    </button>
+
+                </div>
+
+
+                <div className="space-y-4">
+
+                    <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-gray-800" />
+                        <span className="text-xs text-gray-500">
+                            OR UPLOAD A DOCUMENT
+                        </span>
+                        <div className="h-px flex-1 bg-gray-800" />
+                    </div>
+
+                    <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-900/60 p-6 transition hover:border-violet-500/60 sm:p-10">
+
+                        <PdfUpload
+                            file={file}
+                            onFileChange={setFile}
+                        />
+
+                        <p className="mt-4 text-center text-xs text-gray-500">
+                            PDF files only · Maximum file size 10 MB
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <p className="text-center text-xs text-gray-500">
+                    Your documents are processed securely.
+                    Start a conversation whenever you're ready.
+                </p>
+
             </div>
-        </main>
+
+        </div>
     );
 }

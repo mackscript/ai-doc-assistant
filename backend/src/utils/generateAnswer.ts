@@ -46,24 +46,23 @@ const generateAnswer = async ({
 export default generateAnswer;
 
 
-const testGenerateAnswer = async () => {
-    console.log('call :>> ', 1)
-    try {
-        const answer = await generateAnswer({
-            question: "What is React?",
-            context: `
-        React is a JavaScript library used
-        for building user interfaces.
-        It uses reusable components.
-      `,
-        });
+// const testGenerateAnswer = async () => {
 
-        console.log("AI Answer:", answer);
-    } catch (error) {
-        console.error("AI Error:", error);
-    } finally {
-        console.log('done :>> ', 2);
-    }
-};
+//     try {
+//         const answer = await generateAnswer({
+//             question: "What is React?",
+//             context: `
+//         React is a JavaScript library used
+//         for building user interfaces.
+//         It uses reusable components.
+//       `,
+//         });
 
-testGenerateAnswer();
+//         console.log("AI Answer:", answer);
+//     } catch (error) {
+//         console.error("AI Error:", error);
+//     } finally {
+//     }
+// };
+
+// testGenerateAnswer();

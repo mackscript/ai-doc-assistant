@@ -6,9 +6,15 @@ import documentRoutes from "./routes/documentRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 
 const app = express()
-app.use(cors({
-    origin: 'http://localhost:3000'
-}))
+app.use(
+    cors({
+        origin: [
+            "http://localhost:3000",
+            "https://ai-doc-assistant-sable.vercel.app",
+        ],
+        credentials: true,
+    })
+);
 
 
 app.use(express.json())

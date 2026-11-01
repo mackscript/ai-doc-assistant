@@ -5,6 +5,7 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation'
 import api from "@/lib/axios";
+import { toast } from "sonner";
 
 const LoginPage = () => {
     const router = useRouter()
@@ -64,31 +65,32 @@ const LoginPage = () => {
                 password
             })
 
+            console.log('response :>> ', response);
             setError("")
             if (response?.data?.success) {
-
                 const { token, user } = response.data;
 
                 localStorage.setItem("token", token);
                 localStorage.setItem("user", JSON.stringify(user));
-
+                toast.success("Login successful!");
                 router.push("/chat");
             }
         } catch (error: any) {
-
+            console.log('error :>> ', error);
             setError(error?.response?.data?.message)
+            toast.error("Invalid email or password.");
         } finally {
             setIsLoading(false);
         }
 
     };
-    useEffect(() => {
-        const token = localStorage.getItem("token");
+    // useEffect(() => {
+    //     const token = localStorage.getItem("token");
 
-        if (token) {
-            router.replace("/chat");
-        }
-    }, [router]);
+    //     if (token) {
+    //         router.replace("/chat");
+    //     }
+    // }, [router]);
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-gray-950 px-4">

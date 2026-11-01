@@ -4,6 +4,7 @@ import api from "@/lib/axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
+import { toast } from "sonner";
 
 interface RegisterFormData {
     fullName: string;
@@ -93,11 +94,13 @@ export default function RegisterPage() {
             console.log('response :>> ', response);
             setIsLoading(false)
             setError("")
+            toast.success("Account created successfully!")
             if (response?.data?.success) {
                 router.push("/login");
             }
 
         } catch (error: any) {
+            toast.error("Unable to create your account. Please try again.")
             setError(error?.response?.data?.message)
         } finally {
             setIsLoading(false);

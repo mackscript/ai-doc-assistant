@@ -4,6 +4,7 @@
 import api from "@/lib/axios";
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface PdfUploadProps {
     file: File | null;
@@ -78,9 +79,10 @@ export default function PdfUpload({
                 fileInputRef.current.value = "";
             }
 
-
+            toast.success("PDF uploaded successfully!")
             router.push(`/chat/${chatId}`);
         } catch (error: any) {
+            toast.error("Something went wrong while uploading your PDF.")
             setUploadError(
                 error.response?.data?.message ||
                 error.message ||

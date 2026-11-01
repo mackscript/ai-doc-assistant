@@ -1,5 +1,6 @@
 import axios from "axios";
 
+
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL,
     headers: {
@@ -24,12 +25,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const requestUrl = error.config?.url;
+
+        const isLoginRequest = requestUrl?.includes("/api/auth/login");
+
+        if (error.response?.status === 401 && !isLoginRequest) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
 
             window.location.replace("/login");
+
         }
+
         return Promise.reject(error);
     }
 );

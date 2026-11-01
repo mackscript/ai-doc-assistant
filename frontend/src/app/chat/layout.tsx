@@ -17,6 +17,7 @@ import {
     deleteChat,
     getAllChats,
 } from "@/service/chatService";
+import { toast } from "sonner";
 
 export default function ChatLayout({
     children,
@@ -75,9 +76,11 @@ export default function ChatLayout({
             );
 
             if (chatId === id) {
+                toast.success("Chat deleted successfully.")
                 router.push("/chat");
             }
         } catch (error) {
+            toast.success("Failed to delete chat. Please try again.")
             console.error("Delete chat error:", error);
         }
     };
@@ -88,6 +91,7 @@ export default function ChatLayout({
         localStorage.removeItem("user");
 
         router.replace("/login");
+        toast.success("You have been logged out successfully.")
     };
 
     return (

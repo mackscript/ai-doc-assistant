@@ -1,8 +1,10 @@
 
 "use client";
+
 export interface Chat {
     _id: string;
     title: string;
+    documentId?: string | null;
 }
 
 interface ChatSidebarProps {
@@ -21,13 +23,14 @@ export default function ChatSidebar({
     onDeleteChat,
 }: ChatSidebarProps) {
     return (
-        <aside className="flex h-full w-72 flex-col border-r border-gray-800 bg-gray-900 p-4">
+        <aside className="flex h-full w-72  flex-col border-r border-gray-800 bg-gray-900 p-4">
+
             <button
                 type="button"
                 onClick={onNewChat}
                 className="mb-6 cursor-pointer rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium hover:bg-blue-700"
             >
-                + New Chat
+                + Upload PDF
             </button>
 
             <h2 className="mb-3 text-sm font-semibold text-gray-400">
@@ -43,15 +46,17 @@ export default function ChatSidebar({
                     chats.map((chat) => (
                         <div
                             key={chat._id}
-                            className={`flex items-center gap-2 rounded-lg p-2 ${activeChatId === chat._id
+                            className={`flex cursor-pointer   items-center gap-2 rounded-lg p-2 ${activeChatId === chat._id
                                 ? "bg-gray-700"
                                 : "hover:bg-gray-800"
                                 }`}
                         >
                             <button
                                 type="button"
+
                                 onClick={() => onSelectChat(chat._id)}
-                                className="min-w-0 flex-1 truncate text-left text-sm text-gray-200"
+                                className=" cursor-pointer min-w-0 flex-1 truncate text-left text-sm text-gray-200"
+                                title={chat.title}
                             >
                                 {chat.title}
                             </button>
@@ -59,8 +64,8 @@ export default function ChatSidebar({
                             <button
                                 type="button"
                                 onClick={() => onDeleteChat(chat._id)}
-                                className="shrink-0 text-xs text-red-400 hover:text-red-300"
-                                aria-label="Delete chat"
+                                className="shrink-0 text-xs cursor-pointer  text-red-400 hover:text-red-300"
+                                aria-label={`Delete ${chat.title}`}
                             >
                                 Delete
                             </button>

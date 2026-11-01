@@ -4,17 +4,10 @@ import api from "@/lib/axios";
 export interface Chat {
     _id: string;
     title: string;
+    documentId: string | null;
     createdAt?: string;
     updatedAt?: string;
 }
-
-export const createChat = async (title: string) => {
-    const response = await api.post("/api/chat/new", {
-        title,
-    });
-
-    return response.data;
-};
 
 export const getAllChats = async (): Promise<Chat[]> => {
     const response = await api.get("/api/chat");

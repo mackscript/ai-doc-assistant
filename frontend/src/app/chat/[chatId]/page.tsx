@@ -19,16 +19,23 @@ interface Message {
     createdAt: Date;
 }
 
+interface ChatInfo {
+    _id: string;
+    title: string;
+    documentId: string | null;
+}
+
 export default function ChatDetailsPage() {
     const params = useParams();
     const chatId = params.chatId as string;
 
     const requestIdRef = useRef(0);
 
+    const [chat, setChat] = useState<ChatInfo | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
-
+    const [error, setError] = useState("");
 
     useEffect(() => {
         const requestId = ++requestIdRef.current;
@@ -36,12 +43,15 @@ export default function ChatDetailsPage() {
         const fetchMessages = async () => {
             try {
                 setIsLoading(true);
+                setError("");
                 setMessages([]);
+                setChat(null);
 
                 const data = await getChatMessages(chatId);
 
-
                 if (requestId !== requestIdRef.current) return;
+
+                setChat(data.chat);
 
                 const formattedMessages: Message[] = data.messages.map(
                     (message: any) => ({
@@ -53,8 +63,13 @@ export default function ChatDetailsPage() {
                 );
 
                 setMessages(formattedMessages);
-            } catch (error) {
-                console.log('error :>> ', error);
+            } catch (error: any) {
+                if (requestId !== requestIdRef.current) return;
+
+                setError(
+                    error.response?.data?.message ||
+                    "Unable to load chat. Please try again."
+                );
             } finally {
                 if (requestId === requestIdRef.current) {
                     setIsLoading(false);
@@ -71,18 +86,21 @@ export default function ChatDetailsPage() {
         };
     }, [chatId]);
 
-
     const handleSend = async (message: string) => {
         if (!message.trim() || isSending) return;
 
         setIsSending(true);
+        setError("");
+
         const tempMessage: Message = {
             id: crypto.randomUUID(),
             role: "user",
             content: message.trim(),
             createdAt: new Date(),
         };
+
         setMessages((prev) => [...prev, tempMessage]);
+
         try {
             const data = await sendChatMessage(chatId, message.trim());
 
@@ -101,11 +119,15 @@ export default function ChatDetailsPage() {
                     createdAt: new Date(data.assistantMessage.createdAt),
                 },
             ]);
-        } catch (error) {
+        } catch (error: any) {
             setMessages((prev) =>
                 prev.filter((msg) => msg.id !== tempMessage.id)
             );
-            console.log('error :>> ', error);
+
+            setError(
+                error.response?.data?.message ||
+                "Failed to send message. Please try again."
+            );
         } finally {
             setIsSending(false);
         }
@@ -119,9 +141,36 @@ export default function ChatDetailsPage() {
         );
     }
 
+    if (error && !chat) {
+        return (
+            <div className="flex flex-1 items-center justify-center p-6">
+                <p className="text-sm text-red-400">{error}</p>
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-0 flex-1 flex-col">
+
+            <div className="border-b border-gray-800 px-5 py-3">
+                <h1 className="truncate text-sm font-medium text-white">
+                    {chat?.title || "Document Chat"}
+                </h1>
+
+                <p className="text-xs text-gray-500">
+                    Ask questions about this PDF
+                </p>
+            </div>
+
+
             <MessageList messages={messages} />
+
+            {error && (
+                <p className="px-5 py-2 text-sm text-red-400">
+                    {error}
+                </p>
+            )}
+
 
             <MessageInput
                 onSend={handleSend}

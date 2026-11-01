@@ -2,14 +2,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+    useParams,
+    usePathname,
+    useRouter,
+} from "next/navigation";
 
-import PdfUpload from "@/components/chat/PdfUpload";
 import ChatHeader from "@/components/chat/ChatHeader";
-import ChatSidebar, { Chat } from "@/components/chat/ChatSidebar";
+import ChatSidebar, {
+    Chat,
+} from "@/components/chat/ChatSidebar";
 
 import {
-    createChat,
     deleteChat,
     getAllChats,
 } from "@/service/chatService";
@@ -21,11 +25,11 @@ export default function ChatLayout({
 }) {
     const router = useRouter();
     const params = useParams();
+    const pathname = usePathname();
 
     const chatId = params.chatId as string | undefined;
 
     const [chats, setChats] = useState<Chat[]>([]);
-    const [file, setFile] = useState<File | null>(null);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -45,30 +49,22 @@ export default function ChatLayout({
         };
 
         fetchChats();
-    }, [router]);
+    }, [router, pathname]);
 
-    const handleNewChat = async () => {
-        try {
-            const response = await createChat("New Chat");
 
-            if (response.success) {
-                const newChat = response.data;
-
-                setChats((prev) => [newChat, ...prev]);
-
-                router.push(`/chat/${newChat._id}`);
-            }
-        } catch (error) {
-            console.error("Create chat error:", error);
-        }
+    const handleNewChat = () => {
+        router.push("/chat");
     };
+
 
     const handleSelectChat = (id: string) => {
         router.push(`/chat/${id}`);
     };
 
+
     const handleDeleteChat = async (id: string) => {
         const confirmed = window.confirm("Delete this chat?");
+
         if (!confirmed) return;
 
         try {
@@ -82,13 +78,15 @@ export default function ChatLayout({
                 router.push("/chat");
             }
         } catch (error) {
-            console.log('error :>> ', error);
+            console.error("Delete chat error:", error);
         }
     };
 
+    // Logout
     const handleLogout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+
         router.replace("/login");
     };
 
@@ -106,11 +104,6 @@ export default function ChatLayout({
                 />
 
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <PdfUpload
-                        file={file}
-                        onFileChange={setFile}
-                    />
-
                     {children}
                 </div>
             </div>

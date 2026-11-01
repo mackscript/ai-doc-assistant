@@ -3,22 +3,22 @@
 
 import api from "@/lib/axios";
 import React, { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface PdfUploadProps {
     file: File | null;
     onFileChange: (file: File | null) => void;
 }
 
-
 export default function PdfUpload({
     file,
     onFileChange,
 }: PdfUploadProps) {
+    const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState("");
-    const [uploadSuccess, setUploadSuccess] = useState("");
 
     const handleFileChange = (
         e: React.ChangeEvent<HTMLInputElement>
@@ -28,17 +28,18 @@ export default function PdfUpload({
         if (!selectedFile) return;
 
         if (selectedFile.type !== "application/pdf") {
-            alert("Only PDF files are allowed");
+            setUploadError("Only PDF files are allowed");
             e.target.value = "";
             return;
         }
 
         if (selectedFile.size > 10 * 1024 * 1024) {
-            alert("File size must be less than 10MB");
+            setUploadError("File size must be less than 10MB");
             e.target.value = "";
             return;
         }
 
+        setUploadError("");
         onFileChange(selectedFile);
     };
 
@@ -47,15 +48,13 @@ export default function PdfUpload({
     };
 
     const handleUpload = async () => {
-        if (!file) return;
-
+        if (!file || isUploading) return;
 
         const formData = new FormData();
         formData.append("file", file);
 
         setIsUploading(true);
         setUploadError("");
-        setUploadSuccess("");
 
         try {
             const response = await api.post(
@@ -63,25 +62,34 @@ export default function PdfUpload({
                 formData
             );
 
-            if (response.data.success) {
-                setUploadSuccess(response.data.message || "PDF uploaded successfully");
-
-                onFileChange(null);
-
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                }
-
-                console.log("Upload response:", response.data);
+            if (!response.data.success) {
+                throw new Error("PDF upload failed");
             }
+
+            const chatId = response.data.chat?.id;
+
+            if (!chatId) {
+                throw new Error("Chat ID not received from server");
+            }
+
+            onFileChange(null);
+
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+
+
+            router.push(`/chat/${chatId}`);
         } catch (error: any) {
             setUploadError(
-                error.response?.data?.message || "PDF upload failed"
+                error.response?.data?.message ||
+                error.message ||
+                "PDF upload failed"
             );
         } finally {
             setIsUploading(false);
         }
-    }
+    };
 
     return (
         <div className="border-b border-gray-800 p-4">
@@ -93,14 +101,16 @@ export default function PdfUpload({
                 onChange={handleFileChange}
             />
 
-            <div className="w-full justify-between flex">
+            <div className="flex w-full justify-between">
                 <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-700"
+                    disabled={isUploading}
+                    className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
                 >
                     Choose PDF
                 </button>
+
                 {file && (
                     <button
                         type="button"
@@ -112,6 +122,7 @@ export default function PdfUpload({
                     </button>
                 )}
             </div>
+
             {file && (
                 <div className="mt-3 flex items-center justify-between rounded-lg bg-gray-800 p-3">
                     <div>
@@ -126,27 +137,24 @@ export default function PdfUpload({
 
                     <button
                         type="button"
+                        disabled={isUploading}
                         onClick={() => {
                             onFileChange(null);
+
                             if (fileInputRef.current) {
                                 fileInputRef.current.value = "";
                             }
                         }}
-                        className="text-sm text-red-400 hover:text-red-300"
+                        className="text-sm text-red-400 hover:text-red-300 disabled:opacity-50"
                     >
                         Remove
                     </button>
                 </div>
             )}
+
             {uploadError && (
                 <p className="mt-2 text-sm text-red-500">
                     {uploadError}
-                </p>
-            )}
-
-            {uploadSuccess && (
-                <p className="mt-2 text-sm text-green-500">
-                    {uploadSuccess}
                 </p>
             )}
         </div>

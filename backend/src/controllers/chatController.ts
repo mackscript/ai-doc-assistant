@@ -1,14 +1,15 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
+
 import searchSimilarChunks from "../utils/searchSimilarChunks.js";
 import generateAnswer from "../utils/generateAnswer.js";
-import Chat from "../models/Chat.js";
-import mongoose from "mongoose";
-import Message from "../models/Message.js";
 
-export const sendMessage = async (
-    req: Request,
-    res: Response
-) => {
+import Chat from "../models/Chat.js";
+import Message from "../models/Message.js";
+import DocumentModel from "../models/Document.js";
+import Chunk from "../models/Chunk.js";
+
+export const sendMessage = async (req: Request, res: Response) => {
     try {
         const { chatId } = req.params;
         const { message } = req.body;
@@ -37,10 +38,10 @@ export const sendMessage = async (
             });
         }
 
-
         const chatObjectId = new mongoose.Types.ObjectId(chatId);
 
 
+        // find chat
         const chat = await Chat.findOne({
             _id: chatObjectId,
             userId,
@@ -54,6 +55,28 @@ export const sendMessage = async (
         }
 
 
+        if (!chat.documentId) {
+            return res.status(400).json({
+                success: false,
+                message: "Please upload a PDF before sending messages",
+            });
+        }
+
+
+        const document = await DocumentModel.findOne({
+            _id: chat.documentId,
+            chatId: chat._id,
+            userId,
+        });
+
+        if (!document) {
+            return res.status(404).json({
+                success: false,
+                message: "Attached PDF not found",
+            });
+        }
+
+
         const userMessage = await Message.create({
             chatId: chatObjectId,
             userId,
@@ -61,21 +84,20 @@ export const sendMessage = async (
             content: message.trim(),
         });
 
-        console.log('message :>> ', message);
-        console.log('userId :>> ', userId);
 
+        // search form  Chunks 
         const relevantChunks = await searchSimilarChunks(
             message.trim(),
-            userId
+            userId.toString(),
+            chat.documentId.toString()
         );
-
 
         let answer: string;
 
-        //  generateAnswer from aI 
+
         if (relevantChunks.length === 0) {
             answer =
-                "I couldn't find relevant information in your uploaded documents.";
+                "I couldn't find relevant information in this PDF.";
         } else {
             const context = relevantChunks
                 .map((chunk, index) => {
@@ -88,7 +110,6 @@ export const sendMessage = async (
                 context,
             });
         }
-
 
 
         const assistantMessage = await Message.create({
@@ -116,10 +137,8 @@ export const sendMessage = async (
                 })),
             },
         });
-
     } catch (error) {
         console.error("Chat error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Failed to process message",
@@ -128,42 +147,12 @@ export const sendMessage = async (
 };
 
 
-export const createChat = async (req: Request, res: Response) => {
-
-    try {
-
-        const { title } = req.body
-        const userId = res.locals.userId;
-        if (!title || typeof title !== "string" || !title.trim()) {
-            return res.status(400).json({
-                success: false,
-                message: "Chat title is required",
-            })
-        }
-
-        const chat = await Chat.create({
-            userId,
-            title: title.trim(),
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: "Chat created successfully",
-            data: chat
-        })
-
-
-    } catch (error) {
-        return res.status(500).json({
-            success: true,
-            message: "Failed to create chat",
-        })
-    }
-
-
-
-}
-
+export const createChat = async (_req: Request, res: Response) => {
+    return res.status(400).json({
+        success: false,
+        message: "Please upload a PDF to create a new chat",
+    });
+};
 
 export const getAllChats = async (
     req: Request,
@@ -174,14 +163,13 @@ export const getAllChats = async (
 
         const chats = await Chat.find({ userId })
             .sort({ updatedAt: -1 })
-            .select("_id title createdAt updatedAt");
+            .select("_id title documentId createdAt updatedAt");
 
         return res.status(200).json({
             success: true,
             message: "Chats retrieved successfully",
             data: chats,
         });
-
     } catch (error) {
         console.log('error :>> ', error);
 
@@ -192,7 +180,6 @@ export const getAllChats = async (
     }
 };
 
-
 export const getChatMessages = async (
     req: Request,
     res: Response
@@ -200,7 +187,6 @@ export const getChatMessages = async (
     try {
         const { chatId } = req.params;
         const userId = res.locals.userId;
-
 
         if (
             typeof chatId !== "string" ||
@@ -211,7 +197,6 @@ export const getChatMessages = async (
                 message: "Invalid chat ID",
             });
         }
-
 
         const chat = await Chat.findOne({
             _id: new mongoose.Types.ObjectId(chatId),
@@ -225,12 +210,10 @@ export const getChatMessages = async (
             });
         }
 
-
         const messages = await Message.find({
             chatId: chat._id,
             userId,
         }).sort({ createdAt: 1 });
-
 
         return res.status(200).json({
             success: true,
@@ -240,17 +223,14 @@ export const getChatMessages = async (
                 messages,
             },
         });
-
     } catch (error) {
-        console.log('error :>> ', error);
+        console.log('error  getChatMessages :>> ', error);
         return res.status(500).json({
             success: false,
             message: "Failed to retrieve chat history",
         });
     }
 };
-
-
 
 export const deleteChat = async (
     req: Request,
@@ -270,7 +250,6 @@ export const deleteChat = async (
             });
         }
 
-
         const chat = await Chat.findOne({
             _id: new mongoose.Types.ObjectId(chatId),
             userId,
@@ -284,10 +263,29 @@ export const deleteChat = async (
         }
 
 
+        const document = await DocumentModel.findOne({
+            chatId: chat._id,
+            userId,
+        });
+
+
         await Message.deleteMany({
             chatId: chat._id,
             userId,
         });
+
+
+        if (document) {
+            await Chunk.deleteMany({
+                documentId: document._id,
+                userId,
+            });
+
+            await DocumentModel.deleteOne({
+                _id: document._id,
+                userId,
+            });
+        }
 
 
         await Chat.deleteOne({
@@ -297,11 +295,11 @@ export const deleteChat = async (
 
         return res.status(200).json({
             success: true,
-            message: "Chat deleted successfully",
+            message: "Chat and its PDF deleted successfully",
         });
-
     } catch (error) {
-        console.log('error :>> ', error);
+        console.log('error  Delete :>> ', error);
+
         return res.status(500).json({
             success: false,
             message: "Failed to delete chat",

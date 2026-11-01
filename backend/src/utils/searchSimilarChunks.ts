@@ -4,9 +4,9 @@ import generateEmbedding from "./generateEmbedding.js";
 
 const searchSimilarChunks = async (
     query: string,
-    userId: string
+    userId: string,
+    documentId: string
 ) => {
-
     const queryEmbedding = await generateEmbedding(query);
 
     const results = await Chunk.aggregate([
@@ -18,9 +18,18 @@ const searchSimilarChunks = async (
                 numCandidates: 100,
                 limit: 5,
                 filter: {
-                    userId: {
-                        $eq: new mongoose.Types.ObjectId(userId),
-                    },
+                    $and: [
+                        {
+                            userId: {
+                                $eq: new mongoose.Types.ObjectId(userId),
+                            },
+                        },
+                        {
+                            documentId: {
+                                $eq: new mongoose.Types.ObjectId(documentId),
+                            },
+                        },
+                    ],
                 },
             },
         },
